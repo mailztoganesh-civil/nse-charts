@@ -1,6 +1,7 @@
 /* NSE Charts — app.js
  * Renders NSE-listed stock candlesticks using TradingView's lightweight-charts,
- * sourcing OHLC data from Yahoo Finance's public chart endpoint (proxied for CORS).
+ * sourcing OHLC data from a self-hosted Cloudflare Worker (worker/cloudflare-worker.js)
+ * that proxies Yahoo Finance server-side. Fully independent of any third-party app.
  */
 
 // ---------------------------------------------------------------------------
@@ -32,53 +33,56 @@ const NSE_SYMBOLS = [
 ];
 
 // ---------------------------------------------------------------------------
-// 2. Data fetching — Yahoo Finance chart API, routed through CORS proxies
-//    since browsers cannot call it cross-origin directly. Strategies are
-//    tried in order; the first one that returns valid data wins.
-//    See README.md to swap in your own proxy/worker for production use.
+// 2. Data fetching — via your own Cloudflare Worker (worker/cloudflare-worker.js),
+//    which fetches Yahoo Finance server-side (no CORS restriction applies
+//    server-to-server) and returns clean JSON with a CORS header attached.
+//    Fully independent of any third-party backend — see README.md to deploy.
 // ---------------------------------------------------------------------------
-const YAHOO_BASE = "https://query1.finance.yahoo.com/v8/finance/chart/";
+const OHLC_API_BASE = "https://nse-charts-proxy.mailztoganesh.workers.dev";
 
-const PROXY_STRATEGIES = [
-  (url) => url, // direct — works if you deploy your own same-origin proxy at this path
-  (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
-  (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-];
+const REQUEST_TIMEOUT_MS = 10000;
 
-async function fetchYahooChart(symbol, range, interval) {
-  const yahooUrl = `${YAHOO_BASE}${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&includePrePost=false`;
-  let lastError;
-  for (const wrap of PROXY_STRATEGIES) {
-    try {
-      const res = await fetch(wrap(yahooUrl), { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      const result = json?.chart?.result?.[0];
-      if (!result) throw new Error(json?.chart?.error?.description || "No data returned");
-      return parseYahooResult(result);
-    } catch (err) {
-      lastError = err;
-    }
-  }
-  throw lastError || new Error("All data sources failed");
+function fetchWithTimeout(url, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { cache: "no-store", signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-function parseYahooResult(result) {
-  const ts = result.timestamp || [];
-  const quote = result.indicators?.quote?.[0] || {};
-  const candles = [];
-  for (let i = 0; i < ts.length; i++) {
-    const o = quote.open?.[i], h = quote.high?.[i], l = quote.low?.[i], c = quote.close?.[i];
-    if ([o, h, l, c].some((v) => v === null || v === undefined)) continue;
-    candles.push({ time: ts[i], open: o, high: h, low: l, close: c });
+function cacheKey(symbol, range, interval) {
+  return `nsecharts:cache:${symbol}:${range}:${interval}`;
+}
+
+async function fetchChartData(symbol, range, interval) {
+  const url = `${OHLC_API_BASE}?symbol=${encodeURIComponent(symbol)}&range=${range}&interval=${interval}`;
+
+  try {
+    const res = await fetchWithTimeout(url, REQUEST_TIMEOUT_MS);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    if (!json.candles || !json.candles.length) throw new Error("No data returned for this symbol/range");
+
+    const parsed = {
+      candles: json.candles,
+      currency: "INR",
+      longName: json.symbol || symbol,
+      regularMarketPrice: json.candles.at(-1).close,
+      previousClose: json.candles.length > 1 ? json.candles.at(-2).close : json.candles[0].open,
+    };
+    try {
+      localStorage.setItem(cacheKey(symbol, range, interval), JSON.stringify({ parsed, at: Date.now() }));
+    } catch { /* storage full/unavailable — non-fatal */ }
+    return parsed;
+  } catch (err) {
+    // Backend unreachable/asleep/queued — fall back to the last good cached response.
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey(symbol, range, interval)));
+      if (cached) {
+        const ageMin = Math.round((Date.now() - cached.at) / 60000);
+        return { ...cached.parsed, stale: true, staleMinutes: ageMin };
+      }
+    } catch { /* no usable cache */ }
+    throw err;
   }
-  return {
-    candles,
-    currency: result.meta?.currency || "INR",
-    longName: result.meta?.longName || result.meta?.symbol,
-    regularMarketPrice: result.meta?.regularMarketPrice,
-    previousClose: result.meta?.chartPreviousClose ?? result.meta?.previousClose,
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -86,6 +90,7 @@ function parseYahooResult(result) {
 // ---------------------------------------------------------------------------
 const chartEl = document.getElementById("chart");
 const statusEl = document.getElementById("chartStatus");
+const staleBanner = document.getElementById("staleBanner");
 
 const chart = LightweightCharts.createChart(chartEl, {
   layout: {
@@ -134,11 +139,6 @@ let state = {
   interval: "5m",
 };
 
-function toYahooSymbol(sym) {
-  const s = sym.trim().toUpperCase();
-  return s.endsWith(".NS") ? s : `${s}.NS`;
-}
-
 function setStatus(msg, isError = false) {
   statusEl.textContent = msg;
   statusEl.classList.toggle("hidden", !msg);
@@ -149,12 +149,15 @@ async function loadSymbol(sym, range, interval) {
   const ticker = sym.trim().toUpperCase();
   quoteSymbol.textContent = ticker;
   setStatus(`Loading ${ticker}…`);
+  staleBanner.classList.add("hidden");
   try {
-    const data = await fetchYahooChart(toYahooSymbol(ticker), range, interval);
+    const data = await fetchChartData(ticker, range, interval);
     if (!data.candles.length) throw new Error("No candles for this range/symbol");
     series.setData(data.candles);
     chart.timeScale().fitContent();
     setStatus("");
+    staleBanner.textContent = data.stale ? `Live sources unreachable — showing data from ${data.staleMinutes}m ago` : "";
+    staleBanner.classList.toggle("hidden", !data.stale);
 
     const price = data.regularMarketPrice ?? data.candles.at(-1).close;
     const prevClose = data.previousClose ?? data.candles[0].open;
@@ -286,7 +289,7 @@ async function refreshWatchlistPrices() {
     const cell = watchlistItems.querySelector(`.wl-price[data-sym="${sym}"]`);
     if (!cell) continue;
     try {
-      const data = await fetchYahooChart(toYahooSymbol(sym), "1D", "5m");
+      const data = await fetchChartData(sym, "1D", "5m");
       const last = data.candles.at(-1);
       if (last) cell.textContent = formatPrice(last.close, data.currency);
     } catch {

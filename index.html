@@ -24,7 +24,7 @@
 
   <div class="symbol-search">
     <input id="symbolInput" type="text" inputmode="text" autocomplete="off" autocapitalize="characters"
-           placeholder="Symbol — e.g. RELIANCE, TCS, INFY" aria-label="NSE symbol" />
+           placeholder="Any NSE symbol — e.g. RELIANCE, TCS, INFY" aria-label="NSE symbol" />
     <div id="suggestions" class="suggestions" role="listbox"></div>
   </div>
 
@@ -50,6 +50,7 @@
 <main class="chart-wrap">
   <div id="chart"></div>
   <div id="chartStatus" class="chart-status"></div>
+  <div id="staleBanner" class="stale-banner hidden"></div>
 </main>
 
 <section class="watchlist" id="watchlistSection">

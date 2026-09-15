@@ -67,35 +67,43 @@ you push to `main` goes live immediately without rebuilding the Android
 package, as long as you don't change the manifest's icons/name (those are
 baked into the package at build time).
 
-## 4. About the data source (read this before relying on it)
+## 4. Data source: your own Cloudflare Worker (no third-party backend)
 
-Yahoo Finance's chart endpoint doesn't send CORS headers, so a browser
-can't call it directly from your GitHub Pages origin. This app routes
-requests through public CORS proxies (`corsproxy.io`, `allorigins.win`) as
-a zero-setup default — fine for personal use, but they're free/shared
-services with **no uptime or rate-limit guarantee**.
+Browsers can't call Yahoo Finance directly (no CORS headers on their end),
+so a small proxy is required. Rather than depending on public CORS proxies
+or someone else's app, this ships with a self-contained Cloudflare Worker
+you deploy once, for free, in about 2 minutes — no local tools needed.
 
-For anything more reliable, deploy your own tiny proxy and it'll be tried
-first automatically (see `PROXY_STRATEGIES` in `app.js`, first entry
-passes the URL through unchanged). A Cloudflare Worker is the easiest
-option:
+1. Go to **[dash.cloudflare.com](https://dash.cloudflare.com)** → sign up
+   (free, no credit card) → **Workers & Pages** → **Create** → **Create Worker**.
+2. Give it a name (e.g. `nse-charts-proxy`) → **Deploy** (it deploys a
+   placeholder first — that's fine).
+3. Click **Edit code**, delete everything in the editor, and paste in the
+   full contents of `worker/cloudflare-worker.js` from this repo.
+4. Click **Deploy** again.
+5. Copy the Worker's URL — shown at the top, looks like:
+   `https://nse-charts-proxy.<your-subdomain>.workers.dev`
+6. Open `app.js` in this repo, find this line near the top:
+   ```js
+   const OHLC_API_BASE = "https://REPLACE-WITH-YOUR-WORKER.workers.dev";
+   ```
+   and replace it with your actual Worker URL from step 5.
+7. Push the updated `app.js` to GitHub (overwrite the file). Done — the
+   app now has its own independent, always-on data source.
 
-```js
-// worker.js — deploy on Cloudflare Workers (free tier is plenty)
-export default {
-  async fetch(request) {
-    const target = new URL(request.url).searchParams.get("url");
-    if (!target) return new Response("Missing url param", { status: 400 });
-    const res = await fetch(target);
-    const headers = new Headers(res.headers);
-    headers.set("Access-Control-Allow-Origin", "*");
-    return new Response(res.body, { status: res.status, headers });
-  }
-};
+**Why a Worker and not a public proxy:** free public CORS proxies
+(`corsproxy.io`, `allorigins.win`, etc.) are shared by everyone using them,
+get rate-limited, and sometimes silently return degraded/incomplete data.
+A Worker you own only serves your requests, runs on Cloudflare's global
+network (100,000 free requests/day — far more than personal use needs),
+and never sleeps the way a free-tier Replit app does.
+
+**Test it directly** any time by visiting, e.g.:
 ```
-
-Then change the first entry in `PROXY_STRATEGIES` (in `app.js`) to route
-through it, e.g. `(url) => \`https://your-worker.workers.dev/?url=${encodeURIComponent(url)}\``.
+https://your-worker.workers.dev?symbol=RELIANCE&range=1Y&interval=1wk
+```
+You should get back JSON with a `candles` array. If you get an error here,
+fix it at this level first — the frontend will show the same error message.
 
 ## 5. Customizing
 
@@ -117,4 +125,5 @@ app.js        — data fetching, chart rendering, search, watchlist
 manifest.json — PWA manifest (used by PWABuilder)
 sw.js         — service worker (offline app-shell caching)
 icons/        — app icons (192, 512, maskable 512)
+worker/cloudflare-worker.js — the self-hosted data proxy (see section 4)
 ```

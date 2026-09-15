@@ -95,6 +95,16 @@ body{
 }
 .icon-btn.on{color:var(--amber);border-color:var(--amber);}
 
+.nav-arrow{
+  font-size:22px;
+  font-weight:600;
+  line-height:1;
+}
+.nav-arrow:disabled{
+  opacity:0.3;
+  cursor:default;
+}
+
 /* ---------- Quote strip ---------- */
 .quote-strip{
   display:flex;
@@ -133,6 +143,34 @@ body{
   cursor:pointer;
 }
 .ranges button.active{background:var(--ink-2);color:var(--amber);}
+
+.indicators{
+  display:flex;
+  gap:6px;
+  padding:0 14px 8px;
+  border-bottom:1px solid var(--line);
+  flex-shrink:0;
+  overflow-x:auto;
+}
+.indicators button{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:none;
+  border:1px solid var(--line);
+  color:var(--text-lo);
+  font-family:var(--mono);
+  font-size:11px;
+  padding:4px 9px;
+  border-radius:12px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.indicators button.active{border-color:currentColor;color:var(--text-hi);}
+.indicators .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.dot-volume{background:var(--text-lo);}
+.dot-ma20{background:#4FC3F7;}
+.dot-ma50{background:var(--amber);}
 
 /* ---------- Chart ---------- */
 .chart-wrap{

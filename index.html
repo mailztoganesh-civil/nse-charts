@@ -22,11 +22,15 @@
     <span class="brand-mark">NSE</span><span class="brand-word">Charts</span>
   </div>
 
+  <button id="prevSymbol" class="icon-btn nav-arrow" title="Previous stock" aria-label="Previous stock">‹</button>
+
   <div class="symbol-search">
     <input id="symbolInput" type="text" inputmode="text" autocomplete="off" autocapitalize="characters"
            placeholder="Any NSE symbol — e.g. RELIANCE, TCS, INFY" aria-label="NSE symbol" />
     <div id="suggestions" class="suggestions" role="listbox"></div>
   </div>
+
+  <button id="nextSymbol" class="icon-btn nav-arrow" title="Next stock" aria-label="Next stock">›</button>
 
   <button id="watchToggle" class="icon-btn" title="Add to watchlist" aria-label="Add to watchlist">☆</button>
 </header>
@@ -45,6 +49,12 @@
   <button data-range="6M" data-interval="1d">6M</button>
   <button data-range="1Y" data-interval="1wk">1Y</button>
   <button data-range="5Y" data-interval="1mo">5Y</button>
+</nav>
+
+<nav class="indicators" id="indicators">
+  <button data-ind="volume" class="active"><span class="dot dot-volume"></span>Volume</button>
+  <button data-ind="ma20" class="active"><span class="dot dot-ma20"></span>MA20</button>
+  <button data-ind="ma50"><span class="dot dot-ma50"></span>MA50</button>
 </nav>
 
 <main class="chart-wrap">

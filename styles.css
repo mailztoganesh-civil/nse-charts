@@ -219,12 +219,30 @@ body{
   overflow-y:auto;
   flex-shrink:0;
 }
-.watchlist h2{
-  font-size:12px;
-  font-weight:500;
+.watchlist-tabs{
+  display:flex;
+  gap:4px;
+  overflow-x:auto;
+  margin-bottom:8px;
+}
+.watchlist-tabs button{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:none;
+  border:1px solid var(--line);
   color:var(--text-lo);
-  margin:0 0 8px;
-  text-transform:none;
+  font-family:var(--mono);
+  font-size:12px;
+  padding:5px 10px;
+  border-radius:12px;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.watchlist-tabs button.active{border-color:var(--amber);color:var(--amber);}
+.watchlist-tabs button.add-tab{color:var(--text-lo);border-style:dashed;}
+.watchlist-tabs .tab-close{
+  background:none;border:none;color:inherit;font-size:13px;line-height:1;padding:0;cursor:pointer;opacity:0.6;
 }
 .watchlist ul{list-style:none;margin:0;padding:0;}
 .watchlist li{
@@ -241,7 +259,87 @@ body{
 .watchlist .wl-remove{
   background:none;border:none;color:var(--text-lo);font-size:15px;cursor:pointer;padding:0 4px;
 }
-.watchlist.empty h2{display:none;}
+.watchlist-empty-msg{color:var(--text-lo);font-size:12px;font-family:var(--mono);padding:6px 0;}
+
+/* ---------- Add-to-watchlist modal ---------- */
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.6);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:100;
+  padding:20px;
+}
+.modal-overlay.hidden{display:none;}
+.modal{
+  background:var(--ink-1);
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:16px;
+  width:100%;
+  max-width:340px;
+  max-height:80vh;
+  overflow-y:auto;
+}
+.modal h3{
+  margin:0 0 12px;
+  font-size:14px;
+  font-weight:600;
+  color:var(--text-hi);
+  font-family:var(--sans);
+}
+.modal-rows{display:flex;flex-direction:column;gap:2px;margin-bottom:12px;}
+.modal-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:8px 4px;
+  border-bottom:1px solid var(--line);
+  font-family:var(--mono);
+  font-size:13px;
+  color:var(--text-hi);
+}
+.modal-row:last-child{border-bottom:none;}
+.modal-row input[type="checkbox"]{width:16px;height:16px;accent-color:var(--amber);flex-shrink:0;}
+.modal-row .row-name{flex:1;}
+.modal-new-row{
+  display:flex;
+  gap:6px;
+  margin-bottom:14px;
+}
+.modal-new-row input{
+  flex:1;
+  background:var(--ink-2);
+  border:1px solid var(--line);
+  color:var(--text-hi);
+  font-family:var(--sans);
+  font-size:13px;
+  padding:8px 10px;
+  border-radius:6px;
+}
+.modal-new-row button{
+  background:var(--ink-2);
+  border:1px solid var(--amber);
+  color:var(--amber);
+  font-size:13px;
+  padding:8px 12px;
+  border-radius:6px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.modal-done{
+  width:100%;
+  background:var(--amber);
+  border:none;
+  color:var(--ink-0);
+  font-weight:600;
+  font-size:14px;
+  padding:10px;
+  border-radius:6px;
+  cursor:pointer;
+}
 
 footer.datasrc{
   text-align:center;

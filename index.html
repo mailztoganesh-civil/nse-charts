@@ -32,7 +32,7 @@
 
   <button id="nextSymbol" class="icon-btn nav-arrow" title="Next stock" aria-label="Next stock">›</button>
 
-  <button id="watchToggle" class="icon-btn" title="Add to watchlist" aria-label="Add to watchlist">☆</button>
+  <button id="watchToggle" class="icon-btn" title="Add to a watchlist" aria-label="Add to a watchlist">☆</button>
 </header>
 
 <section class="quote-strip" id="quoteStrip" aria-live="polite">
@@ -43,12 +43,14 @@
 </section>
 
 <nav class="ranges" id="ranges">
-  <button data-range="1D" data-interval="5m" class="active">1D</button>
-  <button data-range="5D" data-interval="15m">5D</button>
-  <button data-range="1M" data-interval="1d">1M</button>
-  <button data-range="6M" data-interval="1d">6M</button>
-  <button data-range="1Y" data-interval="1wk">1Y</button>
-  <button data-range="5Y" data-interval="1mo">5Y</button>
+  <button data-range="1d" data-interval="1m">1m</button>
+  <button data-range="5d" data-interval="5m">5m</button>
+  <button data-range="1mo" data-interval="15m">15m</button>
+  <button data-range="1mo" data-interval="30m">30m</button>
+  <button data-range="3mo" data-interval="60m">1H</button>
+  <button data-range="1y" data-interval="1d" class="active">D</button>
+  <button data-range="5y" data-interval="1wk">W</button>
+  <button data-range="max" data-interval="1mo">M</button>
 </nav>
 
 <nav class="indicators" id="indicators">
@@ -64,13 +66,25 @@
 </main>
 
 <section class="watchlist" id="watchlistSection">
-  <h2>Watchlist</h2>
+  <div class="watchlist-tabs" id="watchlistTabs"></div>
   <ul id="watchlistItems"></ul>
 </section>
 
 <footer class="datasrc">
   Data via Yahoo Finance (delayed). For reference only — not investment advice.
 </footer>
+
+<div class="modal-overlay hidden" id="watchlistModal">
+  <div class="modal">
+    <h3 id="modalTitle">Add to watchlist</h3>
+    <div id="modalListRows" class="modal-rows"></div>
+    <div class="modal-new-row">
+      <input id="modalNewListName" type="text" placeholder="New watchlist name" autocomplete="off" />
+      <button id="modalCreateBtn">Create</button>
+    </div>
+    <button id="modalDoneBtn" class="modal-done">Done</button>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>

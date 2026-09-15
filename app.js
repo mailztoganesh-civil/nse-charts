@@ -3602,7 +3602,14 @@ const prevSymbolBtn = document.getElementById("prevSymbol");
 const nextSymbolBtn = document.getElementById("nextSymbol");
 const indicatorsEl = document.getElementById("indicators");
 const watchlistSection = document.getElementById("watchlistSection");
+const watchlistTabs = document.getElementById("watchlistTabs");
 const watchlistItems = document.getElementById("watchlistItems");
+const watchlistModal = document.getElementById("watchlistModal");
+const modalTitle = document.getElementById("modalTitle");
+const modalListRows = document.getElementById("modalListRows");
+const modalNewListName = document.getElementById("modalNewListName");
+const modalCreateBtn = document.getElementById("modalCreateBtn");
+const modalDoneBtn = document.getElementById("modalDoneBtn");
 
 const quoteSymbol = document.getElementById("quoteSymbol");
 const quotePrice = document.getElementById("quotePrice");
@@ -3611,8 +3618,8 @@ const quoteMeta = document.getElementById("quoteMeta");
 
 let state = {
   symbol: localStorage.getItem("nsecharts:lastSymbol") || "RELIANCE",
-  range: "1D",
-  interval: "5m",
+  range: "1y",
+  interval: "1d",
 };
 
 const DEFAULT_INDICATORS = { volume: true, ma20: true, ma50: false };
@@ -3659,6 +3666,8 @@ async function loadSymbol(sym, range, interval) {
     if (!data.candles.length) throw new Error("No candles for this range/symbol");
     series.setData(data.candles);
     chart.timeScale().fitContent();
+    series.priceScale().applyOptions({ autoScale: true });
+    chart.priceScale("volume").applyOptions({ autoScale: true });
 
     volumeSeries.setData(
       data.candles.map((c, i) => ({
@@ -3770,33 +3779,192 @@ rangesEl.addEventListener("click", (e) => {
   loadSymbol(state.symbol, state.range, state.interval);
 });
 
-// --- watchlist (persisted in localStorage) ---
-function getWatchlist() {
-  return JSON.parse(localStorage.getItem("nsecharts:watchlist") || "[]");
+// --- multi-watchlist data model (persisted in localStorage) ---
+const WATCHLISTS_KEY = "nsecharts:watchlists";
+const ACTIVE_LIST_KEY = "nsecharts:activeWatchlist";
+
+function getWatchlists() {
+  let lists;
+  try {
+    lists = JSON.parse(localStorage.getItem(WATCHLISTS_KEY));
+  } catch {
+    lists = null;
+  }
+  if (!Array.isArray(lists) || lists.length === 0) {
+    // Migrate the old single flat watchlist, if present, else start fresh.
+    let migratedSymbols = [];
+    try {
+      migratedSymbols = JSON.parse(localStorage.getItem("nsecharts:watchlist") || "[]");
+    } catch { /* ignore */ }
+    lists = [{ id: "wl_default", name: "Watchlist", symbols: migratedSymbols }];
+    saveWatchlists(lists);
+  }
+  return lists;
 }
-function saveWatchlist(list) {
-  localStorage.setItem("nsecharts:watchlist", JSON.stringify(list));
+
+function saveWatchlists(lists) {
+  localStorage.setItem(WATCHLISTS_KEY, JSON.stringify(lists));
 }
+
+function getActiveListId() {
+  const lists = getWatchlists();
+  let id = localStorage.getItem(ACTIVE_LIST_KEY);
+  if (!lists.some((l) => l.id === id)) id = lists[0].id;
+  return id;
+}
+
+function setActiveListId(id) {
+  localStorage.setItem(ACTIVE_LIST_KEY, id);
+}
+
+function createWatchlist(name) {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return null;
+  const lists = getWatchlists();
+  const newList = { id: "wl_" + Date.now(), name: trimmed, symbols: [] };
+  lists.push(newList);
+  saveWatchlists(lists);
+  return newList;
+}
+
+function deleteWatchlist(id) {
+  let lists = getWatchlists().filter((l) => l.id !== id);
+  if (lists.length === 0) lists = [{ id: "wl_default", name: "Watchlist", symbols: [] }];
+  saveWatchlists(lists);
+  if (getActiveListId() === id) setActiveListId(lists[0].id);
+}
+
+function toggleSymbolInList(listId, sym) {
+  const lists = getWatchlists();
+  const list = lists.find((l) => l.id === listId);
+  if (!list) return;
+  const idx = list.symbols.indexOf(sym);
+  if (idx === -1) list.symbols.push(sym);
+  else list.symbols.splice(idx, 1);
+  saveWatchlists(lists);
+}
+
+function isSymbolInAnyList(sym) {
+  return getWatchlists().some((l) => l.symbols.includes(sym));
+}
+
 function updateWatchToggle(sym) {
-  const on = getWatchlist().includes(sym);
+  const on = isSymbolInAnyList(sym);
   watchToggle.classList.toggle("on", on);
   watchToggle.textContent = on ? "★" : "☆";
 }
-watchToggle.addEventListener("click", () => {
+
+// --- add-to-watchlist picker modal ---
+function openWatchlistModal() {
   const sym = state.symbol.toUpperCase();
-  let list = getWatchlist();
-  if (list.includes(sym)) list = list.filter((s) => s !== sym);
-  else list.push(sym);
-  saveWatchlist(list);
+  modalTitle.textContent = `Add ${sym} to watchlist`;
+  renderModalRows(sym);
+  modalNewListName.value = "";
+  watchlistModal.classList.remove("hidden");
+}
+
+function closeWatchlistModal() {
+  watchlistModal.classList.add("hidden");
+}
+
+function renderModalRows(sym) {
+  const lists = getWatchlists();
+  modalListRows.innerHTML = "";
+  for (const list of lists) {
+    const row = document.createElement("label");
+    row.className = "modal-row";
+    const checked = list.symbols.includes(sym) ? "checked" : "";
+    row.innerHTML = `<input type="checkbox" ${checked} /><span class="row-name">${list.name}</span>`;
+    row.querySelector("input").addEventListener("change", () => {
+      toggleSymbolInList(list.id, sym);
+      updateWatchToggle(sym);
+      renderWatchlistTabs();
+      renderWatchlistStocks();
+    });
+    modalListRows.appendChild(row);
+  }
+}
+
+watchToggle.addEventListener("click", openWatchlistModal);
+modalDoneBtn.addEventListener("click", closeWatchlistModal);
+watchlistModal.addEventListener("click", (e) => {
+  if (e.target === watchlistModal) closeWatchlistModal();
+});
+modalCreateBtn.addEventListener("click", () => {
+  const name = modalNewListName.value;
+  const newList = createWatchlist(name);
+  if (!newList) return;
+  const sym = state.symbol.toUpperCase();
+  toggleSymbolInList(newList.id, sym);
   updateWatchToggle(sym);
-  renderWatchlist();
+  setActiveListId(newList.id);
+  modalNewListName.value = "";
+  renderModalRows(sym);
+  renderWatchlistTabs();
+  renderWatchlistStocks();
 });
 
-function renderWatchlist() {
-  const list = getWatchlist();
-  watchlistSection.classList.toggle("empty", list.length === 0);
+// --- watchlist tab strip + active list's stock rows ---
+function renderWatchlistTabs() {
+  const lists = getWatchlists();
+  const activeId = getActiveListId();
+  watchlistTabs.innerHTML = "";
+  for (const list of lists) {
+    const tab = document.createElement("button");
+    tab.className = list.id === activeId ? "active" : "";
+    tab.innerHTML = `<span>${list.name}</span>`;
+    tab.addEventListener("click", () => {
+      setActiveListId(list.id);
+      renderWatchlistTabs();
+      renderWatchlistStocks();
+    });
+    if (lists.length > 1) {
+      const closeBtn = document.createElement("button");
+      closeBtn.className = "tab-close";
+      closeBtn.textContent = "×";
+      closeBtn.title = `Delete "${list.name}"`;
+      closeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete watchlist "${list.name}"?`)) {
+          deleteWatchlist(list.id);
+          renderWatchlistTabs();
+          renderWatchlistStocks();
+        }
+      });
+      tab.appendChild(closeBtn);
+    }
+    watchlistTabs.appendChild(tab);
+  }
+  const addTab = document.createElement("button");
+  addTab.className = "add-tab";
+  addTab.textContent = "+ New";
+  addTab.addEventListener("click", () => {
+    const name = prompt("New watchlist name:");
+    const newList = createWatchlist(name);
+    if (newList) {
+      setActiveListId(newList.id);
+      renderWatchlistTabs();
+      renderWatchlistStocks();
+    }
+  });
+  watchlistTabs.appendChild(addTab);
+}
+
+function renderWatchlistStocks() {
+  const lists = getWatchlists();
+  const activeId = getActiveListId();
+  const activeList = lists.find((l) => l.id === activeId) || lists[0];
   watchlistItems.innerHTML = "";
-  for (const sym of list) {
+
+  if (activeList.symbols.length === 0) {
+    const msg = document.createElement("li");
+    msg.className = "watchlist-empty-msg";
+    msg.textContent = "No stocks yet — tap ☆ on a chart to add one here.";
+    watchlistItems.appendChild(msg);
+    return;
+  }
+
+  for (const sym of activeList.symbols) {
     const li = document.createElement("li");
     li.innerHTML = `<span>${sym}</span><span class="wl-price" data-sym="${sym}">…</span>`;
     li.addEventListener("click", (e) => {
@@ -3809,21 +3977,24 @@ function renderWatchlist() {
     removeBtn.className = "wl-remove";
     removeBtn.textContent = "×";
     removeBtn.addEventListener("click", () => {
-      saveWatchlist(getWatchlist().filter((s) => s !== sym));
+      toggleSymbolInList(activeList.id, sym);
       updateWatchToggle(state.symbol.toUpperCase());
-      renderWatchlist();
+      renderWatchlistStocks();
     });
     li.appendChild(removeBtn);
     watchlistItems.appendChild(li);
   }
+  refreshWatchlistPrices();
 }
 
 async function refreshWatchlistPrices() {
-  for (const sym of getWatchlist()) {
+  const lists = getWatchlists();
+  const activeList = lists.find((l) => l.id === getActiveListId()) || lists[0];
+  for (const sym of activeList.symbols) {
     const cell = watchlistItems.querySelector(`.wl-price[data-sym="${sym}"]`);
     if (!cell) continue;
     try {
-      const data = await fetchChartData(sym, "1D", "5m");
+      const data = await fetchChartData(sym, "1d", "1m");
       const last = data.candles.at(-1);
       if (last) cell.textContent = formatPrice(last.close, data.currency);
     } catch {
@@ -3836,7 +4007,8 @@ async function refreshWatchlistPrices() {
 // 5. Boot
 // ---------------------------------------------------------------------------
 symbolInput.value = state.symbol;
-renderWatchlist();
+renderWatchlistTabs();
+renderWatchlistStocks();
 loadSymbol(state.symbol, state.range, state.interval);
 
 if ("serviceWorker" in navigator) {

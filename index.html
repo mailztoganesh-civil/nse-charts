@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>NSE Charts</title>
+<meta name="description" content="Candlestick charts for NSE-listed stocks." />
+<meta name="theme-color" content="#0B0F14" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">NSE</span><span class="brand-word">Charts</span>
+  </div>
+
+  <div class="symbol-search">
+    <input id="symbolInput" type="text" inputmode="text" autocomplete="off" autocapitalize="characters"
+           placeholder="Symbol — e.g. RELIANCE, TCS, INFY" aria-label="NSE symbol" />
+    <div id="suggestions" class="suggestions" role="listbox"></div>
+  </div>
+
+  <button id="watchToggle" class="icon-btn" title="Add to watchlist" aria-label="Add to watchlist">☆</button>
+</header>
+
+<section class="quote-strip" id="quoteStrip" aria-live="polite">
+  <span class="quote-symbol" id="quoteSymbol">—</span>
+  <span class="quote-price" id="quotePrice">—</span>
+  <span class="quote-change" id="quoteChange">—</span>
+  <span class="quote-meta" id="quoteMeta"></span>
+</section>
+
+<nav class="ranges" id="ranges">
+  <button data-range="1D" data-interval="5m" class="active">1D</button>
+  <button data-range="5D" data-interval="15m">5D</button>
+  <button data-range="1M" data-interval="1d">1M</button>
+  <button data-range="6M" data-interval="1d">6M</button>
+  <button data-range="1Y" data-interval="1wk">1Y</button>
+  <button data-range="5Y" data-interval="1mo">5Y</button>
+</nav>
+
+<main class="chart-wrap">
+  <div id="chart"></div>
+  <div id="chartStatus" class="chart-status"></div>
+</main>
+
+<section class="watchlist" id="watchlistSection">
+  <h2>Watchlist</h2>
+  <ul id="watchlistItems"></ul>
+</section>
+
+<footer class="datasrc">
+  Data via Yahoo Finance (delayed). For reference only — not investment advice.
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

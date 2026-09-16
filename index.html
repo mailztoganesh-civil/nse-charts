@@ -33,6 +33,7 @@
   <button id="nextSymbol" class="icon-btn nav-arrow" title="Next stock" aria-label="Next stock">›</button>
 
   <button id="watchToggle" class="icon-btn" title="Add to a watchlist" aria-label="Add to a watchlist">☆</button>
+  <button id="screenerToggle" class="icon-btn" title="Screener" aria-label="Screener">⚏</button>
 </header>
 
 <section class="quote-strip" id="quoteStrip" aria-live="polite">
@@ -83,6 +84,16 @@
       <button id="modalCreateBtn">Create</button>
     </div>
     <button id="modalDoneBtn" class="modal-done">Done</button>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="screenerModal">
+  <div class="modal modal-wide">
+    <h3>Screeners</h3>
+    <div class="screener-tabs" id="screenerTabs"></div>
+    <p class="screener-meta" id="screenerMeta">Loading…</p>
+    <div id="screenerRows" class="screener-rows"></div>
+    <button id="screenerDoneBtn" class="modal-done">Close</button>
   </div>
 </div>
 

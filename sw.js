@@ -33,6 +33,9 @@ self.addEventListener("fetch", (event) => {
   // Never cache data requests (Yahoo Finance / CORS proxies) — always go to network.
   if (url.origin !== self.location.origin) return;
 
+  // Screener results update daily — always fetch fresh, never serve a stale cached copy.
+  if (url.pathname.includes("/data/")) return;
+
   event.respondWith(
     caches.match(event.request).then(
       (cached) =>

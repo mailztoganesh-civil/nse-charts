@@ -3598,6 +3598,12 @@ const symbolInput = document.getElementById("symbolInput");
 const suggestionsEl = document.getElementById("suggestions");
 const rangesEl = document.getElementById("ranges");
 const watchToggle = document.getElementById("watchToggle");
+const screenerToggle = document.getElementById("screenerToggle");
+const screenerModal = document.getElementById("screenerModal");
+const screenerTabs = document.getElementById("screenerTabs");
+const screenerMeta = document.getElementById("screenerMeta");
+const screenerRows = document.getElementById("screenerRows");
+const screenerDoneBtn = document.getElementById("screenerDoneBtn");
 const prevSymbolBtn = document.getElementById("prevSymbol");
 const nextSymbolBtn = document.getElementById("nextSymbol");
 const indicatorsEl = document.getElementById("indicators");
@@ -4002,6 +4008,97 @@ async function refreshWatchlistPrices() {
     }
   }
 }
+
+// --- screeners (reads daily-generated static results files) ---
+// To add another screener later: give it a script in scripts/screeners/,
+// have that script write data/screeners/<id>.json, and add one line here.
+const SCREENERS = [
+  { id: "lsib", name: "LSIB" },
+];
+
+let activeScreenerId = localStorage.getItem("nsecharts:activeScreener") || SCREENERS[0].id;
+
+function renderScreenerTabs() {
+  screenerTabs.innerHTML = "";
+  for (const s of SCREENERS) {
+    const tab = document.createElement("button");
+    tab.textContent = s.name;
+    tab.className = s.id === activeScreenerId ? "active" : "";
+    tab.addEventListener("click", () => {
+      activeScreenerId = s.id;
+      localStorage.setItem("nsecharts:activeScreener", s.id);
+      renderScreenerTabs();
+      loadScreenerResults();
+    });
+    screenerTabs.appendChild(tab);
+  }
+}
+
+async function openScreenerModal() {
+  screenerModal.classList.remove("hidden");
+  renderScreenerTabs();
+  await loadScreenerResults();
+}
+
+async function loadScreenerResults() {
+  screenerMeta.textContent = "Loading…";
+  screenerRows.innerHTML = "";
+  try {
+    const res = await fetch(`./data/screeners/${activeScreenerId}.json`, { cache: "no-store" });
+    const data = await res.json();
+    renderScreenerResults(data);
+  } catch (err) {
+    screenerMeta.textContent = "Couldn't load screener results.";
+  }
+}
+
+function renderScreenerResults(data) {
+  if (!data.generatedAt) {
+    screenerMeta.textContent = "No scan has run yet — check back after the next scheduled update.";
+    screenerRows.innerHTML = "";
+    return;
+  }
+  const when = new Date(data.generatedAt).toLocaleString("en-IN", {
+    dateStyle: "medium", timeStyle: "short",
+  });
+  screenerMeta.textContent = `${data.matchCount} of ${data.totalScanned} stocks matched — updated ${when}`;
+
+  screenerRows.innerHTML = "";
+  if (data.results.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "screener-row";
+    empty.textContent = "No stocks matched today's scan.";
+    screenerRows.appendChild(empty);
+    return;
+  }
+
+  for (const r of data.results) {
+    const row = document.createElement("div");
+    row.className = "screener-row";
+    row.innerHTML = `
+      <span class="sr-symbol">${r.symbol}</span>
+      <span class="sr-close">₹${r.close}</span>
+      <span class="sr-change">+${r.weeklyPctChange}%</span>
+    `;
+    row.addEventListener("click", () => {
+      state.symbol = r.symbol;
+      symbolInput.value = r.symbol;
+      loadSymbol(r.symbol, state.range, state.interval);
+      closeScreenerModal();
+    });
+    screenerRows.appendChild(row);
+  }
+}
+
+function closeScreenerModal() {
+  screenerModal.classList.add("hidden");
+}
+
+screenerToggle.addEventListener("click", openScreenerModal);
+screenerDoneBtn.addEventListener("click", closeScreenerModal);
+screenerModal.addEventListener("click", (e) => {
+  if (e.target === screenerModal) closeScreenerModal();
+});
 
 // ---------------------------------------------------------------------------
 // 5. Boot

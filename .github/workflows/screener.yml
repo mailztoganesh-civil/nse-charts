@@ -1,0 +1,38 @@
+name: Daily stock screeners
+
+on:
+  schedule:
+    # 11:00 UTC = 4:30 PM IST — after NSE market close, Mon-Fri
+    - cron: "0 11 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install yfinance pandas
+
+      - name: Run LSIB screener
+        run: python scripts/screeners/lsib.py
+
+      # To add another screener later: drop its script in scripts/screeners/,
+      # then add one more step here, e.g.:
+      #   - name: Run <NAME> screener
+      #     run: python scripts/screeners/<name>.py
+
+      - name: Commit results
+        run: |
+          git config user.name "screener-bot"
+          git config user.email "actions@github.com"
+          git add data/screeners/
+          git diff --staged --quiet || git commit -m "Update screener results ($(date -u +%Y-%m-%d))"
+          git push

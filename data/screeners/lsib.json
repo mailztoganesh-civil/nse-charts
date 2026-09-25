@@ -1,14 +1,14 @@
 {
   "screener": "LSIB",
-  "generatedAt": "2026-09-24T15:43:39.760272+00:00",
+  "generatedAt": "2026-09-25T15:46:19.127914+00:00",
   "totalScanned": 3468,
   "matchCount": 1,
   "results": [
     {
-      "symbol": "PREMIERPOL",
-      "close": 100.51,
-      "pctChange5dAgo": -0.35,
-      "weeklyPctChange": 23.43
+      "symbol": "RAYMONDREL",
+      "close": 711.3,
+      "pctChange5dAgo": 0.64,
+      "weeklyPctChange": 20.91
     }
   ]
 }

@@ -1,14 +1,7 @@
 {
   "screener": "LSIB",
-  "generatedAt": "2026-09-25T15:46:19.127914+00:00",
+  "generatedAt": "2026-09-28T18:26:54.715688+00:00",
   "totalScanned": 3468,
-  "matchCount": 1,
-  "results": [
-    {
-      "symbol": "RAYMONDREL",
-      "close": 711.3,
-      "pctChange5dAgo": 0.64,
-      "weeklyPctChange": 20.91
-    }
-  ]
+  "matchCount": 0,
+  "results": []
 }

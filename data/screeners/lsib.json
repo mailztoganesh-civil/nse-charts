@@ -1,14 +1,7 @@
 {
   "screener": "LSIB",
-  "generatedAt": "2026-11-06T17:49:55.082293+00:00",
+  "generatedAt": "2026-11-09T21:18:34.261098+00:00",
   "totalScanned": 3468,
-  "matchCount": 1,
-  "results": [
-    {
-      "symbol": "AGIIL",
-      "close": 300.93,
-      "pctChange5dAgo": -0.04,
-      "weeklyPctChange": 25.44
-    }
-  ]
+  "matchCount": 0,
+  "results": []
 }
